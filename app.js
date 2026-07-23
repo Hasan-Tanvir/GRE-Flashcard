@@ -70,8 +70,8 @@ const filterBtns = document.querySelectorAll('.filter-btn');
 
 // Load data from data.txt
 async function loadVocabularyData() {
-    try {
-        const response = await fetch('data.txt');
+      try {
+        const response = await fetch('data.json');
         vocabularyData = await response.json();
         loadFromLocalStorage();
         loadingSection.classList.add('hidden');
