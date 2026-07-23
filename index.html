@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GRE Vocabulary Flash Cards</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>GRE Vocabulary Flash Cards</h1>
+            <p class="subtitle">Master your vocabulary with organized flashcards</p>
+        </header>
+
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="Search for a word...">
+            <button id="clear-btn" class="clear-btn"><i class="fas fa-times"></i></button>
+            <button id="search-btn"><i class="fas fa-search"></i></button>
+        </div>
+        <div id="suggestions-container" class="suggestions-container"></div>
+
+        <nav class="nav-menu">
+            <button class="nav-btn active" data-view="categories">
+                <i class="fas fa-layer-group"></i> Categories
+            </button>
+            <button class="nav-btn" data-view="all-words">
+                <i class="fas fa-list"></i> All Words
+            </button>
+            <button class="nav-btn" data-view="known-words">
+                <i class="fas fa-check-circle"></i> Known Words
+            </button>
+            <button class="nav-btn" data-view="not-known-words">
+                <i class="fas fa-times-circle"></i> Not Known
+            </button>
+        </nav>
+
+        <main class="main-content">
+            <section id="category-section" class="section">
+                <h2>Select a Category</h2>
+                <div id="category-list" class="category-grid"></div>
+            </section>
+
+            <section id="subcategory-section" class="section hidden">
+                <div class="section-header">
+                    <button id="back-to-categories" class="back-button">
+                        <i class="fas fa-arrow-left"></i> Back to Categories
+                    </button>
+                    <h2 id="category-title"></h2>
+                    <div class="subcategory-filter">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="known">Known</button>
+                        <button class="filter-btn" data-filter="not-known">Not Known</button>
+                    </div>
+                </div>
+                <div id="subcategory-list" class="subcategory-grid"></div>
+            </section>
+
+            <section id="flashcard-section" class="section hidden">
+                <div class="flashcard-header">
+                    <button id="back-to-prev" class="back-button">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <h2 id="subcategory-title"></h2>
+                    <div class="flashcard-nav-top">
+                        <button id="prev-card" class="control-button" disabled><i class="fas fa-chevron-left"></i> Prev</button>
+                        <span class="progress"><span id="current-card">1</span> / <span id="total-cards">0</span></span>
+                        <button id="next-card" class="control-button">Next <i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+
+                <div class="flashcard-container">
+                    <div id="flashcard" class="flashcard">
+                        <div class="flashcard-front">
+                            <h3 id="word"></h3>
+                            <p class="hint">Click to flip</p>
+                        </div>
+                        <div class="flashcard-back">
+                            <div class="back-content">
+                                <h4>
+                                    <i class="fas fa-tags"></i> Part of Speech
+                                </h4>
+                                <p id="pos" class="pos-text"></p>
+                                <h4>
+                                    <i class="fas fa-volume-up"></i> Phonetic
+                                </h4>
+                                <p id="phonetic" class="phonetic-text"></p>
+                                <h4>
+                                    <i class="fas fa-book"></i> English Definition
+                                </h4>
+                                <p id="english" class="english-text"></p>
+                                <h4>
+                                    <i class="fas fa-language"></i> Bangla Meaning
+                                </h4>
+                                <p id="bangla" class="bangla-text"></p>
+                                <h4>
+                                    <i class="fas fa-sync-alt"></i> Synonyms
+                                </h4>
+                                <div id="synonyms" class="synonyms-container"></div>
+                                <h4>
+                                    <i class="fas fa-file-alt"></i> Example Sentences
+                                </h4>
+                                <ul id="sentences" class="sentences-list"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="not-know-btn" class="action-btn not-know">
+                        <span class="btn-icon">❌</span> Don't Know
+                    </button>
+                    <button id="shuffle-cards" class="action-btn shuffle">
+                        <span class="btn-icon">🔀</span> Shuffle
+                    </button>
+                    <button id="know-btn" class="action-btn know">
+                        <span class="btn-icon">✅</span> Know
+                    </button>
+                </div>
+            </section>
+
+            <section id="words-list-section" class="section hidden">
+                <div class="section-header">
+                    <button id="back-to-menu" class="back-button">
+                        <i class="fas fa-arrow-left"></i> Back to Menu
+                    </button>
+                    <h2 id="list-title"></h2>
+                </div>
+                <div id="words-list" class="words-grid"></div>
+            </section>
+
+            <section id="loading-section" class="section">
+                <div class="loading-spinner"></div>
+                <h2>Loading vocabulary data...</h2>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

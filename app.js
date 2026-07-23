@@ -1,0 +1,530 @@
+// Initialize variables
+let vocabularyData = [];
+let currentCategory = null;
+let currentSubcategory = null;
+let currentWords = [];
+let currentIndex = 0;
+let isFlipped = false;
+let knownWords = new Set();
+let notKnownWords = new Set();
+let previousView = 'categories';
+let currentListView = 'all-words';
+let currentFilter = 'all';
+let debounceTimer = null;
+
+// Category icons
+const categoryIcons = {
+    'Praise & Approval': 'fa-star',
+    'Criticism & Disapproval': 'fa-thumbs-down',
+    'Stubbornness & Obstinacy': 'fa-anchor',
+    'Deception, Trickery & Dishonesty': 'fa-masks-theater',
+    'Truth, Honesty & Openness': 'fa-heart',
+    'Anger, Hostility & Conflict': 'fa-bolt',
+    'Friendliness, Agreement & Harmony': 'fa-hands-holding',
+    'Greed, Excess & Self-Interest': 'fa-gem',
+    'Generosity, Altruism & Selflessness': 'fa-hands-holding-circle',
+    'Intelligence, Insight & Shrewdness': 'fa-lightbulb',
+    'Foolishness, Stupidity & Naivety': 'fa-face-dizzy',
+    'Brevity, Conciseness & Lengthiness': 'fa-align-left',
+    'Bravery & Cowardice': 'fa-shield-halved',
+    'Carefulness & Carelessness': 'fa-eye',
+    'Hardship, Relief & Calmness': 'fa-wind'
+};
+
+// DOM elements
+const categorySection = document.getElementById('category-section');
+const subcategorySection = document.getElementById('subcategory-section');
+const flashcardSection = document.getElementById('flashcard-section');
+const wordsListSection = document.getElementById('words-list-section');
+const loadingSection = document.getElementById('loading-section');
+const categoryList = document.getElementById('category-list');
+const subcategoryList = document.getElementById('subcategory-list');
+const categoryTitle = document.getElementById('category-title');
+const subcategoryTitle = document.getElementById('subcategory-title');
+const listTitle = document.getElementById('list-title');
+const flashcard = document.getElementById('flashcard');
+const wordEl = document.getElementById('word');
+const posEl = document.getElementById('pos');
+const phoneticEl = document.getElementById('phonetic');
+const englishEl = document.getElementById('english');
+const banglaEl = document.getElementById('bangla');
+const synonymsEl = document.getElementById('synonyms');
+const sentencesEl = document.getElementById('sentences');
+const wordsListEl = document.getElementById('words-list');
+const currentCardEl = document.getElementById('current-card');
+const totalCardsEl = document.getElementById('total-cards');
+const prevBtn = document.getElementById('prev-card');
+const nextBtn = document.getElementById('next-card');
+const shuffleBtn = document.getElementById('shuffle-cards');
+const knowBtn = document.getElementById('know-btn');
+const notKnowBtn = document.getElementById('not-know-btn');
+const backToCategoriesBtn = document.getElementById('back-to-categories');
+const backToPrevBtn = document.getElementById('back-to-prev');
+const backToMenuBtn = document.getElementById('back-to-menu');
+const navBtns = document.querySelectorAll('.nav-btn');
+const searchInput = document.getElementById('search-input');
+const searchBtn = document.getElementById('search-btn');
+const clearBtn = document.getElementById('clear-btn');
+const suggestionsContainer = document.getElementById('suggestions-container');
+const filterBtns = document.querySelectorAll('.filter-btn');
+
+// Load data from data.txt
+async function loadVocabularyData() {
+    try {
+        const response = await fetch('data.txt');
+        vocabularyData = await response.json();
+        loadFromLocalStorage();
+        loadingSection.classList.add('hidden');
+        renderCategories();
+        showSection('categories');
+    } catch (error) {
+        console.error('Error loading vocabulary data:', error);
+        loadingSection.innerHTML = '<h2>Error loading vocabulary data!</h2>';
+    }
+}
+
+function saveToLocalStorage() {
+    localStorage.setItem('greFlashcardsKnown', JSON.stringify([...knownWords]));
+    localStorage.setItem('greFlashcardsNotKnown', JSON.stringify([...notKnownWords]));
+}
+
+function loadFromLocalStorage() {
+    try {
+        const known = localStorage.getItem('greFlashcardsKnown');
+        const notKnown = localStorage.getItem('greFlashcardsNotKnown');
+        if (known) knownWords = new Set(JSON.parse(known));
+        if (notKnown) notKnownWords = new Set(JSON.parse(notKnown));
+    } catch (e) {
+        console.error('Error loading from localStorage:', e);
+    }
+}
+
+// Render categories with serial numbers and icons
+function renderCategories() {
+    categoryList.innerHTML = '';
+    vocabularyData.forEach((cat, index) => {
+        const card = document.createElement('div');
+        card.className = 'category-card';
+        const iconClass = categoryIcons[cat.category] || 'fa-book';
+        let totalWords = 0;
+        cat.subCategories.forEach(sub => totalWords += sub.words.length);
+        card.innerHTML = `
+            <div class="card-serial">${index + 1}</div>
+            <div class="card-icon"><i class="fas ${iconClass}"></i></div>
+            <div class="card-content">
+                <h3>${cat.category}</h3>
+                <p>${totalWords} words</p>
+            </div>
+        `;
+        card.addEventListener('click', () => selectCategory(index));
+        categoryList.appendChild(card);
+    });
+}
+
+function selectCategory(index) {
+    currentCategory = vocabularyData[index];
+    categoryTitle.textContent = currentCategory.category;
+    renderSubcategories();
+    previousView = 'categories';
+    showSection('subcategory');
+}
+
+function getFilteredWords(words, filter) {
+    if (filter === 'all') return words;
+    return words.filter(w => {
+        const key = getWordKey(w);
+        if (filter === 'known') return knownWords.has(key);
+        if (filter === 'not-known') return notKnownWords.has(key);
+        return true;
+    });
+}
+
+function renderSubcategories() {
+    console.log('renderSubcategories called');
+    console.log('currentCategory:', currentCategory);
+    subcategoryList.innerHTML = '';
+    currentCategory.subCategories.forEach((subcat, index) => {
+        const filteredWords = getFilteredWords(subcat.words, currentFilter);
+        if (filteredWords.length === 0 && currentFilter !== 'all') return;
+        
+        const card = document.createElement('div');
+        card.className = 'subcategory-card';
+        card.dataset.index = index;
+        card.innerHTML = `
+            <div class="card-serial">${index + 1}</div>
+            <div class="card-icon"><i class="fas fa-folder"></i></div>
+            <div class="card-content">
+                <h3>${subcat.name}</h3>
+                <p>${filteredWords.length} words</p>
+            </div>
+        `;
+        card.addEventListener('click', (e) => {
+            console.log('Subcategory card clicked, index:', e.currentTarget.dataset.index);
+            selectSubcategory(parseInt(e.currentTarget.dataset.index));
+        });
+        subcategoryList.appendChild(card);
+    });
+}
+
+function updateFilterButtons(filter) {
+    currentFilter = filter;
+    filterBtns.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.filter === filter) btn.classList.add('active');
+    });
+    renderSubcategories();
+}
+
+function selectSubcategory(index) {
+    console.log('selectSubcategory called with index:', index);
+    console.log('currentCategory:', currentCategory);
+    console.log('subcategory:', currentCategory.subCategories[index]);
+    currentSubcategory = currentCategory.subCategories[index];
+    currentWords = [...getFilteredWords(currentSubcategory.words, currentFilter)];
+    console.log('currentWords:', currentWords);
+    currentIndex = 0;
+    isFlipped = false;
+    subcategoryTitle.textContent = currentSubcategory.name;
+    totalCardsEl.textContent = currentWords.length;
+    updateFlashcard();
+    previousView = 'subcategory';
+    showSection('flashcard');
+}
+
+function getWordKey(wordData) {
+    return wordData.word.toLowerCase();
+}
+
+function highlightWordInSentence(sentence, word) {
+    const wordLower = word.toLowerCase();
+    const wordPattern = new RegExp(`\\b(${wordLower})\\b`, 'gi');
+    return sentence.replace(wordPattern, (match) => `<span class="highlight-word">${match}</span>`);
+}
+
+function updateFlashcard() {
+    if (currentWords.length === 0) {
+        wordEl.textContent = 'No words found';
+        posEl.textContent = '';
+        phoneticEl.textContent = '';
+        englishEl.textContent = '';
+        banglaEl.textContent = '';
+        synonymsEl.innerHTML = '';
+        sentencesEl.innerHTML = '';
+        currentCardEl.textContent = 0;
+        flashcard.classList.remove('flipped');
+        isFlipped = false;
+        updateButtons();
+        return;
+    }
+    const wordData = currentWords[currentIndex];
+    const wordKey = getWordKey(wordData);
+    wordEl.textContent = wordData.word;
+    posEl.textContent = wordData.pos;
+    phoneticEl.textContent = wordData.phonetic;
+    englishEl.textContent = wordData.english;
+    banglaEl.textContent = wordData.bangla;
+    synonymsEl.innerHTML = wordData.synonyms.map(syn => `<span class="synonym-tag">${syn}</span>`).join('');
+    sentencesEl.innerHTML = wordData.sentences.map(sent => `<li>${highlightWordInSentence(sent, wordData.word)}</li>`).join('');
+    currentCardEl.textContent = currentIndex + 1;
+    flashcard.classList.remove('flipped');
+    isFlipped = false;
+    updateButtons();
+}
+
+function flipCard() {
+    flashcard.classList.toggle('flipped');
+    isFlipped = !isFlipped;
+}
+
+function nextCard() {
+    if (currentIndex < currentWords.length - 1) {
+        currentIndex++;
+        updateFlashcard();
+    }
+}
+
+function prevCard() {
+    if (currentIndex > 0) {
+        currentIndex--;
+        updateFlashcard();
+    }
+}
+
+function handleKnow() {
+    const wordKey = getWordKey(currentWords[currentIndex]);
+    knownWords.add(wordKey);
+    notKnownWords.delete(wordKey);
+    saveToLocalStorage();
+    nextCard();
+}
+
+function handleNotKnown() {
+    const wordKey = getWordKey(currentWords[currentIndex]);
+    notKnownWords.add(wordKey);
+    knownWords.delete(wordKey);
+    saveToLocalStorage();
+    // Move to end of queue
+    const [word] = currentWords.splice(currentIndex, 1);
+    currentWords.push(word);
+    updateFlashcard();
+}
+
+function updateButtons() {
+    prevBtn.disabled = currentIndex === 0;
+    nextBtn.disabled = currentIndex === currentWords.length - 1;
+}
+
+function shuffleCards() {
+    for (let i = currentWords.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [currentWords[i], currentWords[j]] = [currentWords[j], currentWords[i]];
+    }
+    currentIndex = 0;
+    updateFlashcard();
+}
+
+function getAllWords() {
+    let allWords = [];
+    vocabularyData.forEach(cat => {
+        cat.subCategories.forEach(sub => {
+            allWords = allWords.concat(sub.words);
+        });
+    });
+    return allWords;
+}
+
+function renderWordsList(words, title) {
+    listTitle.textContent = title;
+    wordsListEl.innerHTML = '';
+    words.forEach((wordData, index) => {
+        const wordKey = getWordKey(wordData);
+        const isKnown = knownWords.has(wordKey);
+        const isNotKnown = notKnownWords.has(wordKey);
+        const card = document.createElement('div');
+        card.className = 'word-card';
+        let statusHTML = '';
+        if (isKnown) statusHTML = '<span class="word-status known">Known</span>';
+        else if (isNotKnown) statusHTML = '<span class="word-status not-known">Not Known</span>';
+        card.innerHTML = `
+            <div class="word-card-header">
+                <div class="card-serial">${index + 1}</div>
+                <div style="flex: 1">
+                    <h3>${wordData.word}</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">${wordData.pos}</p>
+                </div>
+                ${statusHTML}
+            </div>
+        `;
+        card.addEventListener('click', () => {
+            // Start flashcards from this word
+            currentWords = [wordData];
+            currentIndex = 0;
+            subcategoryTitle.textContent = wordData.word;
+            totalCardsEl.textContent = 1;
+            updateFlashcard();
+            previousView = currentListView;
+            showSection('flashcard');
+        });
+        wordsListEl.appendChild(card);
+    });
+}
+
+function showSection(section) {
+    categorySection.classList.add('hidden');
+    subcategorySection.classList.add('hidden');
+    flashcardSection.classList.add('hidden');
+    wordsListSection.classList.add('hidden');
+    loadingSection.classList.add('hidden');
+    
+    navBtns.forEach(btn => btn.classList.remove('active'));
+    if (['categories', 'all-words', 'known-words', 'not-known-words'].includes(section)) {
+        document.querySelector(`[data-view="${section}"]`).classList.add('active');
+    }
+
+    if (section === 'categories') {
+        categorySection.classList.remove('hidden');
+    } else if (section === 'subcategory') {
+        subcategorySection.classList.remove('hidden');
+    } else if (section === 'flashcard') {
+        flashcardSection.classList.remove('hidden');
+    } else if (section === 'words-list') {
+        wordsListSection.classList.remove('hidden');
+    }
+}
+
+// Nav button listeners
+navBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const view = btn.dataset.view;
+        currentListView = view;
+        if (view === 'categories') {
+            showSection('categories');
+        } else if (view === 'all-words') {
+            renderWordsList(getAllWords(), 'All Words');
+            showSection('words-list');
+        } else if (view === 'known-words') {
+            const knownWordsList = getAllWords().filter(w => knownWords.has(getWordKey(w)));
+            renderWordsList(knownWordsList, 'Known Words');
+            showSection('words-list');
+        } else if (view === 'not-known-words') {
+            const notKnownWordsList = getAllWords().filter(w => notKnownWords.has(getWordKey(w)));
+            renderWordsList(notKnownWordsList, 'Not Known Words');
+            showSection('words-list');
+        }
+    });
+});
+
+// Back buttons
+backToCategoriesBtn.addEventListener('click', () => showSection('categories'));
+backToPrevBtn.addEventListener('click', () => {
+    if (previousView === 'subcategory') {
+        showSection('subcategory');
+    } else if (['all-words', 'known-words', 'not-known-words'].includes(previousView)) {
+        currentListView = previousView;
+        navBtns.forEach(b => b.classList.remove('active'));
+        document.querySelector(`[data-view="${previousView}"]`).classList.add('active');
+        if (previousView === 'all-words') {
+            renderWordsList(getAllWords(), 'All Words');
+        } else if (previousView === 'known-words') {
+            renderWordsList(getAllWords().filter(w => knownWords.has(getWordKey(w))), 'Known Words');
+        } else if (previousView === 'not-known-words') {
+            renderWordsList(getAllWords().filter(w => notKnownWords.has(getWordKey(w))), 'Not Known Words');
+        }
+        showSection('words-list');
+    } else {
+        showSection('categories');
+    }
+});
+backToMenuBtn.addEventListener('click', () => showSection('categories'));
+
+// Flashcard controls
+flashcard.addEventListener('click', flipCard);
+nextBtn.addEventListener('click', nextCard);
+prevBtn.addEventListener('click', prevCard);
+shuffleBtn.addEventListener('click', shuffleCards);
+knowBtn.addEventListener('click', handleKnow);
+notKnowBtn.addEventListener('click', handleNotKnown);
+
+// Search functionality
+function searchWords(query) {
+    if (!query.trim()) {
+        return getAllWords();
+    }
+    const lowerQuery = query.toLowerCase().trim();
+    return getAllWords().filter(word => {
+        return (
+            word.word.toLowerCase().includes(lowerQuery) ||
+            word.english.toLowerCase().includes(lowerQuery) ||
+            word.bangla.includes(lowerQuery) ||
+            word.synonyms.some(syn => syn.toLowerCase().includes(lowerQuery))
+        );
+    });
+}
+
+function handleSearch() {
+    const query = searchInput.value;
+    const results = searchWords(query);
+    hideSuggestions();
+    navBtns.forEach(btn => btn.classList.remove('active'));
+    currentListView = 'search';
+    if (query.trim()) {
+        renderWordsList(results, `Search Results for "${query}"`);
+    } else {
+        renderWordsList(getAllWords(), 'All Words');
+    }
+    showSection('words-list');
+}
+
+function clearSearch() {
+    searchInput.value = '';
+    hideSuggestions();
+    showSection('categories');
+    navBtns.forEach(btn => btn.classList.remove('active'));
+    navBtns[0].classList.add('active');
+}
+
+function showSuggestions(query) {
+    if (!query.trim()) {
+        hideSuggestions();
+        return;
+    }
+    const results = searchWords(query).slice(0, 10);
+    if (results.length === 0) {
+        hideSuggestions();
+        return;
+    }
+    suggestionsContainer.innerHTML = results.map(word => `
+        <div class="suggestion-item" data-word="${word.word}">
+            <span class="suggestion-word">${word.word}</span>
+            <span class="suggestion-pos">${word.pos}</span>
+        </div>
+    `).join('');
+    suggestionsContainer.classList.add('show');
+    
+    suggestionsContainer.querySelectorAll('.suggestion-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const word = item.dataset.word;
+            searchInput.value = word;
+            hideSuggestions();
+            const wordData = getAllWords().find(w => w.word === word);
+            if (wordData) {
+                currentWords = [wordData];
+                currentIndex = 0;
+                isFlipped = false;
+                subcategoryTitle.textContent = wordData.word;
+                totalCardsEl.textContent = 1;
+                updateFlashcard();
+                previousView = 'search';
+                showSection('flashcard');
+            }
+        });
+    });
+}
+
+function hideSuggestions() {
+    suggestionsContainer.classList.remove('show');
+    suggestionsContainer.innerHTML = '';
+}
+
+function handleInputChange() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        showSuggestions(searchInput.value);
+    }, 300);
+}
+
+// Event listeners
+searchBtn.addEventListener('click', handleSearch);
+searchInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        handleSearch();
+    }
+});
+searchInput.addEventListener('input', handleInputChange);
+clearBtn.addEventListener('click', clearSearch);
+
+filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        updateFilterButtons(btn.dataset.filter);
+    });
+});
+
+document.addEventListener('click', (e) => {
+    if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+        hideSuggestions();
+    }
+});
+
+// Keyboard navigation
+document.addEventListener('keydown', (e) => {
+    if (!flashcardSection.classList.contains('hidden')) {
+        if (e.key === 'ArrowLeft') prevCard();
+        else if (e.key === 'ArrowRight') nextCard();
+        else if (e.key === ' ') { e.preventDefault(); flipCard(); }
+        else if (e.key.toLowerCase() === 'k') handleKnow();
+        else if (e.key.toLowerCase() === 'n') handleNotKnown();
+    }
+});
+
+// Initialize app
+loadVocabularyData();

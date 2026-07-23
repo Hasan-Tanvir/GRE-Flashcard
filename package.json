@@ -1,0 +1,13 @@
+{
+  "name": "gre-vocabulary-flashcards",
+  "version": "1.0.0",
+  "description": "Beautiful GRE vocabulary flashcard app with Bangla meanings and examples",
+  "main": "index.html",
+  "scripts": {
+    "build": "mkdir -p dist && cp index.html dist/ && cp styles.css dist/ && cp app.js dist/",
+    "dev": "python -m http.server 8000"
+  },
+  "keywords": ["vocabulary", "flashcards", "gre"],
+  "author": "",
+  "license": "MIT"
+}
