@@ -53,13 +53,9 @@
             <button id="setsync-btn">
                 <i class="fas fa-key"></i> Set Sync Key
             </button>
-            <button id="exportsync-btn">
-                <i class="fas fa-download"></i> Export Progress
+            <button id="toggle-view-btn">
+                <i class="fas fa-columns"></i> Toggle View
             </button>
-            <button id="importsync-btn">
-                <i class="fas fa-upload"></i> Import Progress
-            </button>
-            <input type="file" id="import-file" accept=".json" style="display: none;">
         </div>
         
         <div id="sync-modal" class="modal" style="display: none;">
@@ -108,53 +104,68 @@
                     </div>
                 </div>
 
-                <div class="flashcard-container">
-                    <div id="flashcard" class="flashcard">
-                        <div class="flashcard-front">
-                            <h3 id="word"></h3>
-                            <p class="hint">Click to flip</p>
-                        </div>
-                        <div class="flashcard-back">
-                            <div class="back-content">
-                                <h4>
-                                    <i class="fas fa-tags"></i> Part of Speech
-                                </h4>
-                                <p id="pos" class="pos-text"></p>
-                                <h4>
-                                    <i class="fas fa-volume-up"></i> Phonetic
-                                </h4>
-                                <p id="phonetic" class="phonetic-text"></p>
-                                <h4>
-                                    <i class="fas fa-book"></i> English Definition
-                                </h4>
-                                <p id="english" class="english-text"></p>
-                                <h4>
-                                    <i class="fas fa-language"></i> Bangla Meaning
-                                </h4>
-                                <p id="bangla" class="bangla-text"></p>
-                                <h4>
-                                    <i class="fas fa-sync-alt"></i> Synonyms
-                                </h4>
-                                <div id="synonyms" class="synonyms-container"></div>
-                                <h4>
-                                    <i class="fas fa-file-alt"></i> Example Sentences
-                                </h4>
-                                <ul id="sentences" class="sentences-list"></ul>
+                <div id="flashcard-layout" class="flashcard-layout single">
+                    <div class="flashcard-wrapper">
+                        <button id="sound-btn" class="sound-btn" title="Pronounce Word">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                        <button id="mini-know-btn" class="mini-status-btn mini-know" title="Mark as Known">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button id="mini-notknow-btn" class="mini-status-btn mini-notknow" title="Mark as Not Known">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        
+                        <div class="flashcard-container">
+                            <div id="flashcard" class="flashcard">
+                                <div class="flashcard-front">
+                                    <h3 id="word"></h3>
+                                    <p class="hint">Click to flip</p>
+                                </div>
+                                <div class="flashcard-back">
+                                    <div class="back-content">
+                                        <h4>
+                                            <i class="fas fa-tags"></i> Part of Speech
+                                        </h4>
+                                        <p id="pos" class="pos-text"></p>
+                                        <h4>
+                                            <i class="fas fa-volume-up"></i> Phonetic
+                                        </h4>
+                                        <p id="phonetic" class="phonetic-text"></p>
+                                        <h4>
+                                            <i class="fas fa-book"></i> English Definition
+                                        </h4>
+                                        <p id="english" class="english-text"></p>
+                                        <h4>
+                                            <i class="fas fa-language"></i> Bangla Meaning
+                                        </h4>
+                                        <p id="bangla" class="bangla-text"></p>
+                                        <h4>
+                                            <i class="fas fa-sync-alt"></i> Synonyms
+                                        </h4>
+                                        <div id="synonyms" class="synonyms-container"></div>
+                                        <h4>
+                                            <i class="fas fa-file-alt"></i> Example Sentences
+                                        </h4>
+                                        <ul id="sentences" class="sentences-list"></ul>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <div class="action-buttons">
-                    <button id="not-know-btn" class="action-btn not-know">
-                        <span class="btn-icon">❌</span> Don't Know
-                    </button>
-                    <button id="shuffle-cards" class="action-btn shuffle">
-                        <span class="btn-icon">🔀</span> Shuffle
-                    </button>
-                    <button id="know-btn" class="action-btn know">
-                        <span class="btn-icon">✅</span> Know
-                    </button>
+                        <div class="action-buttons">
+                            <button id="shuffle-cards" class="action-btn shuffle">
+                                <span class="btn-icon">🔀</span> Shuffle
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="side-list" class="side-list">
+                        <h3 style="color: var(--accent-color); margin-bottom: 1rem; font-size: 1.1rem;">
+                            <i class="fas fa-list"></i> Word List
+                        </h3>
+                        <div id="side-words-list" class="side-words-list"></div>
+                    </div>
                 </div>
             </section>
 

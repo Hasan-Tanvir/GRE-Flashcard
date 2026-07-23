@@ -17,6 +17,7 @@ const db = getFirestore(firebaseApp);
 let currentSyncKey = null;
 let isCloudSyncing = false;
 let unsubscribeListener = null;
+let currentViewMode = localStorage.getItem('greFlashcardsViewMode') || 'single';
 
 let vocabularyData = [];
 let currentCategory = null;
@@ -74,8 +75,9 @@ const totalCardsEl = document.getElementById('total-cards');
 const prevBtn = document.getElementById('prev-card');
 const nextBtn = document.getElementById('next-card');
 const shuffleBtn = document.getElementById('shuffle-cards');
-const knowBtn = document.getElementById('know-btn');
-const notKnowBtn = document.getElementById('not-know-btn');
+const miniKnowBtn = document.getElementById('mini-know-btn');
+const miniNotKnowBtn = document.getElementById('mini-notknow-btn');
+const soundBtn = document.getElementById('sound-btn');
 const backToCategoriesBtn = document.getElementById('back-to-categories');
 const backToPrevBtn = document.getElementById('back-to-prev');
 const backToMenuBtn = document.getElementById('back-to-menu');
@@ -85,15 +87,15 @@ const searchBtn = document.getElementById('search-btn');
 const clearBtn = document.getElementById('clear-btn');
 const suggestionsContainer = document.getElementById('suggestions-container');
 const filterBtns = document.querySelectorAll('.filter-btn');
-const exportBtnEl = document.getElementById('exportsync-btn');
-const importBtnEl = document.getElementById('importsync-btn');
-const importFileEl = document.getElementById('import-file');
 const syncStatusEl = document.getElementById('sync-status');
 const setSyncBtnEl = document.getElementById('setsync-btn');
 const syncModalEl = document.getElementById('sync-modal');
 const syncKeyInputEl = document.getElementById('sync-key-input');
 const saveSyncBtnEl = document.getElementById('save-sync-btn');
 const cancelSyncBtnEl = document.getElementById('cancel-sync-btn');
+const toggleViewBtn = document.getElementById('toggle-view-btn');
+const flashcardLayoutEl = document.getElementById('flashcard-layout');
+const sideWordsListEl = document.getElementById('side-words-list');
 
 function setSyncStatus(status, message) {
     syncStatusEl.classList.remove('synced', 'error');
@@ -230,15 +232,33 @@ function loadFromLocalStorage() {
         const known = localStorage.getItem('greFlashcardsKnown');
         const notKnown = localStorage.getItem('greFlashcardsNotKnown');
         const savedKey = localStorage.getItem('greFlashcardsSyncKey');
+        const savedView = localStorage.getItem('greFlashcardsViewMode');
         if (known) knownWords = new Set(JSON.parse(known));
         if (notKnown) notKnownWords = new Set(JSON.parse(notKnown));
         if (savedKey) {
             currentSyncKey = savedKey;
         }
+        if (savedView) {
+            currentViewMode = savedView;
+        }
+        applyViewMode();
     } catch (e) {
         console.error('Error loading from localStorage:', e);
     }
 }
+
+function applyViewMode() {
+    flashcardLayoutEl.classList.remove('single', 'split');
+    flashcardLayoutEl.classList.add(currentViewMode);
+}
+
+function toggleViewMode() {
+    currentViewMode = currentViewMode === 'single' ? 'split' : 'single';
+    localStorage.setItem('greFlashcardsViewMode', currentViewMode);
+    applyViewMode();
+}
+
+toggleViewBtn.addEventListener('click', toggleViewMode);
 
 function openSyncModal() {
     syncKeyInputEl.value = currentSyncKey || '';
@@ -276,6 +296,19 @@ syncModalEl.addEventListener('click', (e) => {
     if (e.target === syncModalEl) closeSyncModal();
 });
 
+function pronounceWord() {
+    if (currentWords.length === 0) return;
+    const wordData = currentWords[currentIndex];
+    const utterance = new SpeechSynthesisUtterance(wordData.word);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+}
+
+soundBtn.addEventListener('click', pronounceWord);
+
 async function loadVocabularyData() {
       try {
         const response = await fetch('data.json');
@@ -300,6 +333,8 @@ function refreshCurrentViews() {
         renderCategories();
     } else if (!subcategorySection.classList.contains('hidden')) {
         renderSubcategories();
+    } else if (!flashcardSection.classList.contains('hidden')) {
+        renderSideWordsList();
     } else if (!wordsListSection.classList.contains('hidden')) {
         if (currentListView === 'all-words') {
             renderWordsList(getAllWords(), 'All Words');
@@ -391,6 +426,7 @@ function selectSubcategory(index) {
     subcategoryTitle.textContent = currentSubcategory.name;
     totalCardsEl.textContent = currentWords.length;
     updateFlashcard();
+    renderSideWordsList();
     previousView = 'subcategory';
     showSection('flashcard');
 }
@@ -403,6 +439,40 @@ function highlightWordInSentence(sentence, word) {
     const wordLower = word.toLowerCase();
     const wordPattern = new RegExp(`\\b(${wordLower})\\b`, 'gi');
     return sentence.replace(wordPattern, (match) => `<span class="highlight-word">${match}</span>`);
+}
+
+function renderSideWordsList() {
+    if (!sideWordsListEl) return;
+    sideWordsListEl.innerHTML = '';
+    currentWords.forEach((wordData, index) => {
+        const wordKey = getWordKey(wordData);
+        const isKnown = knownWords.has(wordKey);
+        const isNotKnown = notKnownWords.has(wordKey);
+        let statusClass = 'pending';
+        if (isKnown) statusClass = 'known';
+        else if (isNotKnown) statusClass = 'not-known';
+        
+        const item = document.createElement('div');
+        item.className = `side-word-item ${index === currentIndex ? 'active' : ''}`;
+        item.innerHTML = `
+            <div class="side-word-status ${statusClass}"></div>
+            <div class="side-word-info">
+                <div class="side-word-text">${wordData.word}</div>
+                <div class="side-word-pos">${wordData.pos}</div>
+            </div>
+        `;
+        item.addEventListener('click', () => {
+            currentIndex = index;
+            isFlipped = false;
+            updateFlashcard();
+            renderSideWordsList();
+        });
+        sideWordsListEl.appendChild(item);
+    });
+    
+    if (sideWordsListEl.children[currentIndex]) {
+        sideWordsListEl.children[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 }
 
 function updateFlashcard() {
@@ -432,6 +502,7 @@ function updateFlashcard() {
     flashcard.classList.remove('flipped');
     isFlipped = false;
     updateButtons();
+    renderSideWordsList();
 }
 
 function flipCard() {
@@ -602,8 +673,8 @@ flashcard.addEventListener('click', flipCard);
 nextBtn.addEventListener('click', nextCard);
 prevBtn.addEventListener('click', prevCard);
 shuffleBtn.addEventListener('click', shuffleCards);
-knowBtn.addEventListener('click', handleKnow);
-notKnowBtn.addEventListener('click', handleNotKnown);
+miniKnowBtn.addEventListener('click', (e) => { e.stopPropagation(); handleKnow(); });
+miniNotKnowBtn.addEventListener('click', (e) => { e.stopPropagation(); handleNotKnown(); });
 
 function searchWords(query) {
     if (!query.trim()) {
@@ -720,52 +791,7 @@ document.addEventListener('keydown', (e) => {
         else if (e.key === ' ') { e.preventDefault(); flipCard(); }
         else if (e.key.toLowerCase() === 'k') handleKnow();
         else if (e.key.toLowerCase() === 'n') handleNotKnown();
-    }
-});
-
-function exportProgress() {
-    const data = {
-        knownWords: Array.from(knownWords),
-        notKnownWords: Array.from(notKnownWords),
-        exportedAt: new Date().toISOString()
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'gre-flashcards-progress.json';
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
-function importProgress(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const data = JSON.parse(e.target.result);
-            if (data.knownWords) {
-                knownWords = new Set(data.knownWords);
-            }
-            if (data.notKnownWords) {
-                notKnownWords = new Set(data.notKnownWords);
-            }
-            saveToLocalStorage();
-            alert('Progress imported successfully!');
-            refreshCurrentViews();
-        } catch (err) {
-            alert('Error importing file: ' + err.message);
-        }
-    };
-    reader.readAsText(file);
-}
-
-exportBtnEl.addEventListener('click', exportProgress);
-importBtnEl.addEventListener('click', () => importFileEl.click());
-importFileEl.addEventListener('change', (e) => {
-    if (e.target.files[0]) {
-        importProgress(e.target.files[0]);
-        e.target.value = '';
+        else if (e.key.toLowerCase() === 's') pronounceWord();
     }
 });
 

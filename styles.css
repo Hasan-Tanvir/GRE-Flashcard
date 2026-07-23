@@ -481,6 +481,182 @@ body {
     white-space: nowrap;
 }
 
+.flashcard-layout {
+    display: grid;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.flashcard-layout.single {
+    grid-template-columns: 1fr;
+}
+
+.flashcard-layout.single .side-list {
+    display: none;
+}
+
+.flashcard-layout.split {
+    grid-template-columns: 1.4fr 1fr;
+}
+
+@media (max-width: 900px) {
+    .flashcard-layout.split {
+        grid-template-columns: 1fr;
+    }
+    
+    .flashcard-layout.split .side-list {
+        max-height: 350px;
+    }
+}
+
+.flashcard-wrapper {
+    position: relative;
+}
+
+.sound-btn {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: white;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sound-btn:hover {
+    background: var(--primary-gradient);
+    transform: scale(1.08);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+.mini-status-btn {
+    position: absolute;
+    top: 10px;
+    z-index: 10;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.mini-know-btn {
+    right: 10px;
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+}
+
+.mini-know-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+}
+
+.mini-notknow-btn {
+    right: 60px;
+    background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.35);
+}
+
+.mini-notknow-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+}
+
+.side-list {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 16px;
+    padding: 1.25rem;
+    max-height: 620px;
+    overflow-y: auto;
+}
+
+.side-words-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.side-word-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 0.875rem;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    border: 1px solid transparent;
+}
+
+.side-word-item:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+.side-word-item.active {
+    background: var(--primary-gradient);
+    border-color: transparent;
+}
+
+.side-word-item.active .side-word-text,
+.side-word-item.active .side-word-pos {
+    color: white !important;
+}
+
+.side-word-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.side-word-status.known {
+    background: var(--success-color);
+}
+
+.side-word-status.not-known {
+    background: var(--danger-color);
+}
+
+.side-word-status.pending {
+    background: rgba(148, 163, 184, 0.5);
+}
+
+.side-word-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.side-word-text {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.side-word-pos {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
 .flashcard-container {
     perspective: 1200px;
     margin-bottom: 1.5rem;
@@ -638,9 +814,9 @@ body {
 
 .action-buttons {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr;
     gap: 1rem;
-    max-width: 600px;
+    max-width: 300px;
     margin: 0 auto;
 }
 
@@ -813,24 +989,12 @@ body {
         grid-template-columns: 1fr;
     }
 
-    .action-buttons {
-        grid-template-columns: 1fr 1fr;
-        gap: 0.75rem;
-    }
-
-    .action-btn.shuffle {
-        grid-column: 1 / -1;
-    }
-
     .control-button {
         padding: 0.5rem 0.875rem;
     }
 }
 
 @media (max-width: 480px) {
-    .action-buttons {
-        grid-template-columns: 1fr;
-    }
 }
 
 /* Custom scrollbar */
