@@ -526,5 +526,71 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// Sync controls
+const exportBtnEl = document.getElementById('export-btn');
+const importBtnEl = document.getElementById('import-btn');
+const importFileEl = document.getElementById('import-file');
+
+// Export function
+function exportProgress() {
+    const data = {
+        knownWords: Array.from(knownWords),
+        notKnownWords: Array.from(notKnownWords),
+        exportedAt: new Date().toISOString()
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'gre-flashcards-progress.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// Import function
+function importProgress(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (data.knownWords) {
+                knownWords = new Set(data.knownWords);
+            }
+            if (data.notKnownWords) {
+                notKnownWords = new Set(data.notKnownWords);
+            }
+            saveToLocalStorage();
+            alert('Progress imported successfully!');
+            // Refresh any visible content
+            if (!categorySection.classList.contains('hidden')) {
+                renderCategories();
+            } else if (!subcategorySection.classList.contains('hidden')) {
+                renderSubcategories();
+            } else if (!wordsListSection.classList.contains('hidden')) {
+                if (currentListView === 'all-words') {
+                    renderWordsList(getAllWords(), 'All Words');
+                } else if (currentListView === 'known-words') {
+                    renderWordsList(getAllWords().filter(w => knownWords.has(getWordKey(w))), 'Known Words');
+                } else if (currentListView === 'not-known-words') {
+                    renderWordsList(getAllWords().filter(w => notKnownWords.has(getWordKey(w))), 'Not Known Words');
+                }
+            }
+        } catch (err) {
+            alert('Error importing file: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+exportBtnEl.addEventListener('click', exportProgress);
+importBtnEl.addEventListener('click', () => importFileEl.click());
+importFileEl.addEventListener('change', (e) => {
+    if (e.target.files[0]) {
+        importProgress(e.target.files[0]);
+        e.target.value = '';
+    }
+});
+
 // Initialize app
 loadVocabularyData();
