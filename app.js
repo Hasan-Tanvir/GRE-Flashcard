@@ -17,7 +17,7 @@ const db = getFirestore(firebaseApp);
 let currentSyncKey = null;
 let isCloudSyncing = false;
 let unsubscribeListener = null;
-let currentViewMode = localStorage.getItem('greFlashcardsViewMode') || 'single';
+let currentViewMode = localStorage.getItem('greFlashcardsViewMode') || 'card';
 
 let vocabularyData = [];
 let currentCategory = null;
@@ -94,7 +94,7 @@ const syncModalEl = document.getElementById('sync-modal');
 const syncKeyInputEl = document.getElementById('sync-key-input');
 const saveSyncBtnEl = document.getElementById('save-sync-btn');
 const cancelSyncBtnEl = document.getElementById('cancel-sync-btn');
-const toggleViewBtn = document.getElementById('toggle-view-btn');
+const viewModeBtns = document.querySelectorAll('.view-mode-btn');
 const flashcardLayoutEl = document.getElementById('flashcard-layout');
 const sideWordsListEl = document.getElementById('side-words-list');
 
@@ -240,7 +240,7 @@ function loadFromLocalStorage() {
             currentSyncKey = savedKey;
         }
         if (savedView) {
-            currentViewMode = savedView;
+            currentViewMode = savedView === 'single' ? 'card' : savedView;
         }
         applyViewMode();
     } catch (e) {
@@ -249,17 +249,26 @@ function loadFromLocalStorage() {
 }
 
 function applyViewMode() {
-    flashcardLayoutEl.classList.remove('single', 'split');
+    flashcardLayoutEl.classList.remove('card', 'list', 'split');
     flashcardLayoutEl.classList.add(currentViewMode);
+    viewModeBtns.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.view === currentViewMode) {
+            btn.classList.add('active');
+        }
+    });
 }
 
-function toggleViewMode() {
-    currentViewMode = currentViewMode === 'single' ? 'split' : 'single';
+function setViewMode(mode) {
+    if (!['card', 'list', 'split'].includes(mode)) return;
+    currentViewMode = mode;
     localStorage.setItem('greFlashcardsViewMode', currentViewMode);
     applyViewMode();
 }
 
-toggleViewBtn.addEventListener('click', toggleViewMode);
+viewModeBtns.forEach(btn => {
+    btn.addEventListener('click', () => setViewMode(btn.dataset.view));
+});
 
 function openSyncModal() {
     syncKeyInputEl.value = currentSyncKey || '';

@@ -53,9 +53,17 @@
             <button id="setsync-btn">
                 <i class="fas fa-key"></i> Set Sync Key
             </button>
-            <button id="toggle-view-btn">
-                <i class="fas fa-columns"></i> Toggle View
-            </button>
+            <div class="view-mode-selector">
+                <button class="view-mode-btn" data-view="card" title="Card Only">
+                    <i class="fas fa-square"></i> Card
+                </button>
+                <button class="view-mode-btn" data-view="list" title="List Only">
+                    <i class="fas fa-list"></i> List
+                </button>
+                <button class="view-mode-btn" data-view="split" title="Split View">
+                    <i class="fas fa-columns"></i> Split
+                </button>
+            </div>
         </div>
         
         <div id="sync-modal" class="modal" style="display: none;">
