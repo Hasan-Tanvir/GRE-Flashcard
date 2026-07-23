@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, enablePersistence } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCiT11TuABndvE_fTxrrEJcPO0EQBlbPyo",
@@ -17,10 +17,6 @@ const db = getFirestore(firebaseApp);
 let currentSyncKey = null;
 let isCloudSyncing = false;
 let unsubscribeListener = null;
-
-enablePersistence(db).catch((err) => {
-    console.error("Firestore persistence error:", err);
-});
 
 let vocabularyData = [];
 let currentCategory = null;
