@@ -1,4 +1,27 @@
-// Initialize variables
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, enablePersistence } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCiT11TuABndvE_fTxrrEJcPO0EQBlbPyo",
+  authDomain: "gre-flashcard-29284.firebaseapp.com",
+  projectId: "gre-flashcard-29284",
+  storageBucket: "gre-flashcard-29284.firebasestorage.app",
+  messagingSenderId: "224238292323",
+  appId: "1:224238292323:web:1f85cb2c2d680f25149756",
+  measurementId: "G-53Y5XWJQ20"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+
+let currentSyncKey = null;
+let isCloudSyncing = false;
+let unsubscribeListener = null;
+
+enablePersistence(db).catch((err) => {
+    console.error("Firestore persistence error:", err);
+});
+
 let vocabularyData = [];
 let currentCategory = null;
 let currentSubcategory = null;
@@ -11,8 +34,8 @@ let previousView = 'categories';
 let currentListView = 'all-words';
 let currentFilter = 'all';
 let debounceTimer = null;
+let syncDebounceTimer = null;
 
-// Category icons
 const categoryIcons = {
     'Praise & Approval': 'fa-star',
     'Criticism & Disapproval': 'fa-thumbs-down',
@@ -31,7 +54,6 @@ const categoryIcons = {
     'Hardship, Relief & Calmness': 'fa-wind'
 };
 
-// DOM elements
 const categorySection = document.getElementById('category-section');
 const subcategorySection = document.getElementById('subcategory-section');
 const flashcardSection = document.getElementById('flashcard-section');
@@ -67,13 +89,207 @@ const searchBtn = document.getElementById('search-btn');
 const clearBtn = document.getElementById('clear-btn');
 const suggestionsContainer = document.getElementById('suggestions-container');
 const filterBtns = document.querySelectorAll('.filter-btn');
+const exportBtnEl = document.getElementById('exportsync-btn');
+const importBtnEl = document.getElementById('importsync-btn');
+const importFileEl = document.getElementById('import-file');
+const syncStatusEl = document.getElementById('sync-status');
+const setSyncBtnEl = document.getElementById('setsync-btn');
+const syncModalEl = document.getElementById('sync-modal');
+const syncKeyInputEl = document.getElementById('sync-key-input');
+const saveSyncBtnEl = document.getElementById('save-sync-btn');
+const cancelSyncBtnEl = document.getElementById('cancel-sync-btn');
 
-// Load data from data.txt
+function setSyncStatus(status, message) {
+    syncStatusEl.classList.remove('synced', 'error');
+    syncStatusEl.className = 'sync-status';
+    
+    if (status === 'syncing') {
+        syncStatusEl.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> ${message || 'Syncing...'}`;
+    } else if (status === 'synced') {
+        syncStatusEl.classList.add('synced');
+        syncStatusEl.innerHTML = `<i class="fas fa-check-circle"></i> ${message || 'Synced'}`;
+    } else if (status === 'error') {
+        syncStatusEl.classList.add('error');
+        syncStatusEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message || 'Sync Error'}`;
+    } else {
+        syncStatusEl.innerHTML = `<i class="fas fa-cloud"></i> ${message || 'Not Synced'}`;
+    }
+}
+
+function sanitizeSyncKey(key) {
+    return key.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+}
+
+function hashSyncKey(key) {
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+        const char = key.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0;
+    }
+    return Math.abs(hash).toString(36);
+}
+
+function getDocId(syncKey) {
+    const sanitized = sanitizeSyncKey(syncKey);
+    const hashed = hashSyncKey(syncKey);
+    return `sync_${hashed}_${sanitized.substring(0, 10)}`;
+}
+
+async function saveToCloud() {
+    if (!currentSyncKey) return;
+    
+    clearTimeout(syncDebounceTimer);
+    syncDebounceTimer = setTimeout(async () => {
+        try {
+            setSyncStatus('syncing');
+            isCloudSyncing = true;
+            const docId = getDocId(currentSyncKey);
+            const docRef = doc(db, "progress", docId);
+            await setDoc(docRef, {
+                syncKey: sanitizeSyncKey(currentSyncKey),
+                knownWords: Array.from(knownWords),
+                notKnownWords: Array.from(notKnownWords),
+                updatedAt: new Date().toISOString()
+            }, { merge: true });
+            setSyncStatus('synced');
+            isCloudSyncing = false;
+        } catch (e) {
+            console.error("Cloud save error:", e);
+            setSyncStatus('error', 'Save Failed');
+            isCloudSyncing = false;
+        }
+    }, 500);
+}
+
+async function loadFromCloud() {
+    if (!currentSyncKey) return;
+    try {
+        setSyncStatus('syncing');
+        const docId = getDocId(currentSyncKey);
+        const docRef = doc(db, "progress", docId);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const cloudUpdatedAt = new Date(data.updatedAt || 0);
+            const localUpdatedAt = new Date(localStorage.getItem('greFlashcardsUpdatedAt') || 0);
+            
+            if (cloudUpdatedAt > localUpdatedAt) {
+                if (data.knownWords) knownWords = new Set(data.knownWords);
+                if (data.notKnownWords) notKnownWords = new Set(data.notKnownWords);
+                saveToLocalStorage(false);
+                refreshCurrentViews();
+            } else {
+                saveToCloud();
+            }
+        } else {
+            saveToCloud();
+        }
+        setSyncStatus('synced');
+        listenToCloudChanges();
+    } catch (e) {
+        console.error("Cloud load error:", e);
+        setSyncStatus('error', 'Load Failed');
+    }
+}
+
+function listenToCloudChanges() {
+    if (!currentSyncKey) return;
+    if (unsubscribeListener) unsubscribeListener();
+    
+    const docId = getDocId(currentSyncKey);
+    const docRef = doc(db, "progress", docId);
+    unsubscribeListener = onSnapshot(docRef, (docSnap) => {
+        if (isCloudSyncing) return;
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const cloudUpdatedAt = new Date(data.updatedAt || 0);
+            const localUpdatedAt = new Date(localStorage.getItem('greFlashcardsUpdatedAt') || 0);
+            
+            if (cloudUpdatedAt > localUpdatedAt) {
+                setSyncStatus('syncing', 'Receiving changes...');
+                if (data.knownWords) knownWords = new Set(data.knownWords);
+                if (data.notKnownWords) notKnownWords = new Set(data.notKnownWords);
+                saveToLocalStorage(false);
+                refreshCurrentViews();
+                setTimeout(() => setSyncStatus('synced'), 500);
+            }
+        }
+    }, (error) => {
+        console.error("Snapshot error:", error);
+        setSyncStatus('error', 'Connection Lost');
+    });
+}
+
+function saveToLocalStorage(updateCloud = true) {
+    localStorage.setItem('greFlashcardsKnown', JSON.stringify([...knownWords]));
+    localStorage.setItem('greFlashcardsNotKnown', JSON.stringify([...notKnownWords]));
+    localStorage.setItem('greFlashcardsUpdatedAt', new Date().toISOString());
+    if (updateCloud && currentSyncKey) saveToCloud();
+}
+
+function loadFromLocalStorage() {
+    try {
+        const known = localStorage.getItem('greFlashcardsKnown');
+        const notKnown = localStorage.getItem('greFlashcardsNotKnown');
+        const savedKey = localStorage.getItem('greFlashcardsSyncKey');
+        if (known) knownWords = new Set(JSON.parse(known));
+        if (notKnown) notKnownWords = new Set(JSON.parse(notKnown));
+        if (savedKey) {
+            currentSyncKey = savedKey;
+        }
+    } catch (e) {
+        console.error('Error loading from localStorage:', e);
+    }
+}
+
+function openSyncModal() {
+    syncKeyInputEl.value = currentSyncKey || '';
+    syncModalEl.style.display = 'flex';
+    setTimeout(() => syncKeyInputEl.focus(), 100);
+}
+
+function closeSyncModal() {
+    syncModalEl.style.display = 'none';
+}
+
+async function saveSyncKey() {
+    const newKey = syncKeyInputEl.value.trim();
+    if (!newKey) {
+        alert('Please enter a sync key!');
+        return;
+    }
+    if (unsubscribeListener) {
+        unsubscribeListener();
+        unsubscribeListener = null;
+    }
+    currentSyncKey = newKey;
+    localStorage.setItem('greFlashcardsSyncKey', newKey);
+    closeSyncModal();
+    await loadFromCloud();
+}
+
+setSyncBtnEl.addEventListener('click', openSyncModal);
+cancelSyncBtnEl.addEventListener('click', closeSyncModal);
+saveSyncBtnEl.addEventListener('click', saveSyncKey);
+syncKeyInputEl.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') saveSyncKey();
+});
+syncModalEl.addEventListener('click', (e) => {
+    if (e.target === syncModalEl) closeSyncModal();
+});
+
 async function loadVocabularyData() {
       try {
         const response = await fetch('data.json');
         vocabularyData = await response.json();
         loadFromLocalStorage();
+        if (currentSyncKey) {
+            await loadFromCloud();
+        } else {
+            setSyncStatus('idle', 'Not Synced');
+        }
         loadingSection.classList.add('hidden');
         renderCategories();
         showSection('categories');
@@ -83,23 +299,22 @@ async function loadVocabularyData() {
     }
 }
 
-function saveToLocalStorage() {
-    localStorage.setItem('greFlashcardsKnown', JSON.stringify([...knownWords]));
-    localStorage.setItem('greFlashcardsNotKnown', JSON.stringify([...notKnownWords]));
-}
-
-function loadFromLocalStorage() {
-    try {
-        const known = localStorage.getItem('greFlashcardsKnown');
-        const notKnown = localStorage.getItem('greFlashcardsNotKnown');
-        if (known) knownWords = new Set(JSON.parse(known));
-        if (notKnown) notKnownWords = new Set(JSON.parse(notKnown));
-    } catch (e) {
-        console.error('Error loading from localStorage:', e);
+function refreshCurrentViews() {
+    if (!categorySection.classList.contains('hidden')) {
+        renderCategories();
+    } else if (!subcategorySection.classList.contains('hidden')) {
+        renderSubcategories();
+    } else if (!wordsListSection.classList.contains('hidden')) {
+        if (currentListView === 'all-words') {
+            renderWordsList(getAllWords(), 'All Words');
+        } else if (currentListView === 'known-words') {
+            renderWordsList(getAllWords().filter(w => knownWords.has(getWordKey(w))), 'Known Words');
+        } else if (currentListView === 'not-known-words') {
+            renderWordsList(getAllWords().filter(w => notKnownWords.has(getWordKey(w))), 'Not Known Words');
+        }
     }
 }
 
-// Render categories with serial numbers and icons
 function renderCategories() {
     categoryList.innerHTML = '';
     vocabularyData.forEach((cat, index) => {
@@ -140,8 +355,6 @@ function getFilteredWords(words, filter) {
 }
 
 function renderSubcategories() {
-    console.log('renderSubcategories called');
-    console.log('currentCategory:', currentCategory);
     subcategoryList.innerHTML = '';
     currentCategory.subCategories.forEach((subcat, index) => {
         const filteredWords = getFilteredWords(subcat.words, currentFilter);
@@ -159,7 +372,6 @@ function renderSubcategories() {
             </div>
         `;
         card.addEventListener('click', (e) => {
-            console.log('Subcategory card clicked, index:', e.currentTarget.dataset.index);
             selectSubcategory(parseInt(e.currentTarget.dataset.index));
         });
         subcategoryList.appendChild(card);
@@ -176,12 +388,8 @@ function updateFilterButtons(filter) {
 }
 
 function selectSubcategory(index) {
-    console.log('selectSubcategory called with index:', index);
-    console.log('currentCategory:', currentCategory);
-    console.log('subcategory:', currentCategory.subCategories[index]);
     currentSubcategory = currentCategory.subCategories[index];
     currentWords = [...getFilteredWords(currentSubcategory.words, currentFilter)];
-    console.log('currentWords:', currentWords);
     currentIndex = 0;
     isFlipped = false;
     subcategoryTitle.textContent = currentSubcategory.name;
@@ -217,7 +425,6 @@ function updateFlashcard() {
         return;
     }
     const wordData = currentWords[currentIndex];
-    const wordKey = getWordKey(wordData);
     wordEl.textContent = wordData.word;
     posEl.textContent = wordData.pos;
     phoneticEl.textContent = wordData.phonetic;
@@ -251,6 +458,7 @@ function prevCard() {
 }
 
 function handleKnow() {
+    if (currentWords.length === 0) return;
     const wordKey = getWordKey(currentWords[currentIndex]);
     knownWords.add(wordKey);
     notKnownWords.delete(wordKey);
@@ -259,11 +467,11 @@ function handleKnow() {
 }
 
 function handleNotKnown() {
+    if (currentWords.length === 0) return;
     const wordKey = getWordKey(currentWords[currentIndex]);
     notKnownWords.add(wordKey);
     knownWords.delete(wordKey);
     saveToLocalStorage();
-    // Move to end of queue
     const [word] = currentWords.splice(currentIndex, 1);
     currentWords.push(word);
     updateFlashcard();
@@ -316,7 +524,6 @@ function renderWordsList(words, title) {
             </div>
         `;
         card.addEventListener('click', () => {
-            // Start flashcards from this word
             currentWords = [wordData];
             currentIndex = 0;
             subcategoryTitle.textContent = wordData.word;
@@ -352,7 +559,6 @@ function showSection(section) {
     }
 }
 
-// Nav button listeners
 navBtns.forEach(btn => {
     btn.addEventListener('click', () => {
         const view = btn.dataset.view;
@@ -374,7 +580,6 @@ navBtns.forEach(btn => {
     });
 });
 
-// Back buttons
 backToCategoriesBtn.addEventListener('click', () => showSection('categories'));
 backToPrevBtn.addEventListener('click', () => {
     if (previousView === 'subcategory') {
@@ -397,7 +602,6 @@ backToPrevBtn.addEventListener('click', () => {
 });
 backToMenuBtn.addEventListener('click', () => showSection('categories'));
 
-// Flashcard controls
 flashcard.addEventListener('click', flipCard);
 nextBtn.addEventListener('click', nextCard);
 prevBtn.addEventListener('click', prevCard);
@@ -405,7 +609,6 @@ shuffleBtn.addEventListener('click', shuffleCards);
 knowBtn.addEventListener('click', handleKnow);
 notKnowBtn.addEventListener('click', handleNotKnown);
 
-// Search functionality
 function searchWords(query) {
     if (!query.trim()) {
         return getAllWords();
@@ -493,7 +696,6 @@ function handleInputChange() {
     }, 300);
 }
 
-// Event listeners
 searchBtn.addEventListener('click', handleSearch);
 searchInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
@@ -515,7 +717,6 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Keyboard navigation
 document.addEventListener('keydown', (e) => {
     if (!flashcardSection.classList.contains('hidden')) {
         if (e.key === 'ArrowLeft') prevCard();
@@ -526,12 +727,6 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Sync controls
-const exportBtnEl = document.getElementById('export-btn');
-const importBtnEl = document.getElementById('import-btn');
-const importFileEl = document.getElementById('import-file');
-
-// Export function
 function exportProgress() {
     const data = {
         knownWords: Array.from(knownWords),
@@ -548,7 +743,6 @@ function exportProgress() {
     URL.revokeObjectURL(url);
 }
 
-// Import function
 function importProgress(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -562,20 +756,7 @@ function importProgress(file) {
             }
             saveToLocalStorage();
             alert('Progress imported successfully!');
-            // Refresh any visible content
-            if (!categorySection.classList.contains('hidden')) {
-                renderCategories();
-            } else if (!subcategorySection.classList.contains('hidden')) {
-                renderSubcategories();
-            } else if (!wordsListSection.classList.contains('hidden')) {
-                if (currentListView === 'all-words') {
-                    renderWordsList(getAllWords(), 'All Words');
-                } else if (currentListView === 'known-words') {
-                    renderWordsList(getAllWords().filter(w => knownWords.has(getWordKey(w))), 'Known Words');
-                } else if (currentListView === 'not-known-words') {
-                    renderWordsList(getAllWords().filter(w => notKnownWords.has(getWordKey(w))), 'Not Known Words');
-                }
-            }
+            refreshCurrentViews();
         } catch (err) {
             alert('Error importing file: ' + err.message);
         }
@@ -592,5 +773,4 @@ importFileEl.addEventListener('change', (e) => {
     }
 });
 
-// Initialize app
 loadVocabularyData();

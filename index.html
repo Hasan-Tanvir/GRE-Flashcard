@@ -7,6 +7,15 @@
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script type="importmap">
+    {
+        "imports": {
+            "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+            "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
+            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+        }
+    }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -38,13 +47,31 @@
         </nav>
 
         <div class="sync-controls">
-            <button id="export-btn">
+            <div id="sync-status" class="sync-status">
+                <i class="fas fa-cloud"></i> Not Synced
+            </div>
+            <button id="setsync-btn">
+                <i class="fas fa-key"></i> Set Sync Key
+            </button>
+            <button id="exportsync-btn">
                 <i class="fas fa-download"></i> Export Progress
             </button>
-            <button id="import-btn">
+            <button id="importsync-btn">
                 <i class="fas fa-upload"></i> Import Progress
             </button>
             <input type="file" id="import-file" accept=".json" style="display: none;">
+        </div>
+        
+        <div id="sync-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3>Set Sync Key</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">Use the same sync key on all your devices to sync progress automatically!</p>
+                <input type="text" id="sync-key-input" placeholder="Enter your sync key..." style="width: 100%; padding: 0.875rem; margin-bottom: 1rem; background: rgba(30, 41, 59, 0.95); border: 2px solid rgba(148, 163, 184, 0.3); border-radius: 12px; color: var(--text-primary); font-size: 1rem;">
+                <div style="display: flex; gap: 0.75rem;">
+                    <button id="cancel-sync-btn" style="flex: 1; padding: 0.75rem; border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.3); background: rgba(51, 65, 85, 0.9); color: var(--text-primary); cursor: pointer; font-weight: 600;">Cancel</button>
+                    <button id="save-sync-btn" style="flex: 1; padding: 0.75rem; border-radius: 10px; border: none; background: var(--primary-gradient); color: white; cursor: pointer; font-weight: 600;">Save</button>
+                </div>
+            </div>
         </div>
 
         <main class="main-content">
@@ -148,6 +175,6 @@
         </main>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
