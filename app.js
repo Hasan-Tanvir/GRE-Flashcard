@@ -77,6 +77,7 @@ const nextBtn = document.getElementById('next-card');
 const shuffleBtn = document.getElementById('shuffle-cards');
 const miniKnowBtn = document.getElementById('mini-know-btn');
 const miniNotKnowBtn = document.getElementById('mini-notknow-btn');
+const miniResetBtn = document.getElementById('mini-reset-btn');
 const soundBtn = document.getElementById('sound-btn');
 const backToCategoriesBtn = document.getElementById('back-to-categories');
 const backToPrevBtn = document.getElementById('back-to-prev');
@@ -544,6 +545,15 @@ function handleNotKnown() {
     updateFlashcard();
 }
 
+function handleReset() {
+    if (currentWords.length === 0) return;
+    const wordKey = getWordKey(currentWords[currentIndex]);
+    knownWords.delete(wordKey);
+    notKnownWords.delete(wordKey);
+    saveToLocalStorage();
+    updateFlashcard();
+}
+
 function updateButtons() {
     prevBtn.disabled = currentIndex === 0;
     nextBtn.disabled = currentIndex === currentWords.length - 1;
@@ -675,6 +685,7 @@ prevBtn.addEventListener('click', prevCard);
 shuffleBtn.addEventListener('click', shuffleCards);
 miniKnowBtn.addEventListener('click', (e) => { e.stopPropagation(); handleKnow(); });
 miniNotKnowBtn.addEventListener('click', (e) => { e.stopPropagation(); handleNotKnown(); });
+miniResetBtn.addEventListener('click', (e) => { e.stopPropagation(); handleReset(); });
 
 function searchWords(query) {
     if (!query.trim()) {
@@ -791,6 +802,7 @@ document.addEventListener('keydown', (e) => {
         else if (e.key === ' ') { e.preventDefault(); flipCard(); }
         else if (e.key.toLowerCase() === 'k') handleKnow();
         else if (e.key.toLowerCase() === 'n') handleNotKnown();
+        else if (e.key.toLowerCase() === 'r') handleReset();
         else if (e.key.toLowerCase() === 's') pronounceWord();
     }
 });
