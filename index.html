@@ -112,20 +112,28 @@
                     </div>
                 </div>
 
-                <div id="flashcard-layout" class="flashcard-layout single">
+                <div id="flashcard-layout" class="flashcard-layout card">
                     <div class="flashcard-wrapper">
-                        <button id="mini-reset-btn" class="mini-status-btn mini-reset" title="Reset Status">
-                            <i class="fas fa-rotate-left"></i>
-                        </button>
-                        <button id="mini-know-btn" class="mini-status-btn mini-know" title="Mark as Known">
-                            <i class="fas fa-check"></i>
-                        </button>
-                        <button id="mini-notknow-btn" class="mini-status-btn mini-notknow" title="Mark as Not Known">
-                            <i class="fas fa-times"></i>
-                        </button>
-                        <button id="sound-btn" class="sound-btn" title="Pronounce Word">
-                            <i class="fas fa-volume-up"></i>
-                        </button>
+                        <div class="card-toolbar">
+                            <div class="status-buttons-group">
+                                <button id="mini-notknow-btn" class="mini-status-btn mini-notknow" title="Mark as Not Known (N)">
+                                    <i class="fas fa-times"></i>
+                                    <span>Not Know</span>
+                                </button>
+                                <button id="mini-reset-btn" class="mini-status-btn mini-reset" title="Reset Status (R)">
+                                    <i class="fas fa-rotate-left"></i>
+                                    <span>Reset</span>
+                                </button>
+                                <button id="mini-know-btn" class="mini-status-btn mini-know" title="Mark as Known (K)">
+                                    <i class="fas fa-check"></i>
+                                    <span>Know</span>
+                                </button>
+                            </div>
+                            <button id="sound-btn" class="sound-btn" title="Pronounce Word (S)">
+                                <i class="fas fa-volume-up"></i>
+                                <span>Pronounce</span>
+                            </button>
+                        </div>
                         
                         <div class="flashcard-container">
                             <div id="flashcard" class="flashcard">
