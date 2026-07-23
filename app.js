@@ -32,6 +32,15 @@ let currentListView = 'all-words';
 let currentFilter = 'all';
 let debounceTimer = null;
 let syncDebounceTimer = null;
+let longPressTimer = null;
+let longPressWordData = null;
+let previewShown = false;
+
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+const SWIPE_THRESHOLD = 50;
 
 const categoryIcons = {
     'Praise & Approval': 'fa-star',
@@ -61,7 +70,9 @@ const subcategoryList = document.getElementById('subcategory-list');
 const categoryTitle = document.getElementById('category-title');
 const subcategoryTitle = document.getElementById('subcategory-title');
 const listTitle = document.getElementById('list-title');
-const flashcard = document.getElementById('flashcard');
+const flashcardEl = document.getElementById('flashcard');
+const flashcardFrontEl = flashcardEl.querySelector('.flashcard-front');
+const flashcardBackEl = flashcardEl.querySelector('.flashcard-back');
 const wordEl = document.getElementById('word');
 const posEl = document.getElementById('pos');
 const phoneticEl = document.getElementById('phonetic');
@@ -97,6 +108,16 @@ const cancelSyncBtnEl = document.getElementById('cancel-sync-btn');
 const viewModeBtns = document.querySelectorAll('.view-mode-btn');
 const flashcardLayoutEl = document.getElementById('flashcard-layout');
 const sideWordsListEl = document.getElementById('side-words-list');
+const flashcardContainerEl = document.querySelector('.flashcard-container');
+
+function pronounceSpecificWord(word) {
+    const utterance = new SpeechSynthesisUtterance(word);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+}
 
 function setSyncStatus(status, message) {
     syncStatusEl.classList.remove('synced', 'error');
@@ -309,12 +330,7 @@ syncModalEl.addEventListener('click', (e) => {
 function pronounceWord() {
     if (currentWords.length === 0) return;
     const wordData = currentWords[currentIndex];
-    const utterance = new SpeechSynthesisUtterance(wordData.word);
-    utterance.lang = 'en-US';
-    utterance.rate = 0.9;
-    utterance.pitch = 1;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
+    pronounceSpecificWord(wordData.word);
 }
 
 soundBtn.addEventListener('click', pronounceWord);
@@ -451,6 +467,64 @@ function highlightWordInSentence(sentence, word) {
     return sentence.replace(wordPattern, (match) => `<span class="highlight-word">${match}</span>`);
 }
 
+function showWordPreview(wordData) {
+    if (previewShown) return;
+    previewShown = true;
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'word-preview-overlay';
+    overlay.id = 'word-preview-overlay';
+    
+    const previewCard = document.createElement('div');
+    previewCard.className = 'word-preview-card';
+    previewCard.innerHTML = `
+        <h3>${wordData.word}</h3>
+        <div class="back-content" style="width: 100%; text-align: left;">
+            <h4><i class="fas fa-tags"></i> Part of Speech</h4>
+            <p class="pos-text" style="color: white; font-weight: 600; margin-bottom: 1.25rem;">${wordData.pos}</p>
+            
+            <h4><i class="fas fa-volume-up"></i> Phonetic</h4>
+            <p class="phonetic-text" style="color: #93c5fd; font-style: italic; margin-bottom: 1.25rem;">${wordData.phonetic}</p>
+            
+            <h4><i class="fas fa-book"></i> English Definition</h4>
+            <p class="english-text" style="color: white; margin-bottom: 1.25rem; line-height: 1.7;">${wordData.english}</p>
+            
+            <h4><i class="fas fa-language"></i> Bangla Meaning</h4>
+            <p class="bangla-text" style="color: #86efac; font-weight: 600; margin-bottom: 1.25rem; line-height: 1.7;">${wordData.bangla}</p>
+            
+            <h4><i class="fas fa-sync-alt"></i> Synonyms</h4>
+            <div class="synonyms-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem;">
+                ${wordData.synonyms.map(syn => `<span class="synonym-tag">${syn}</span>`).join('')}
+            </div>
+            
+            <h4><i class="fas fa-file-alt"></i> Example Sentences</h4>
+            <ul class="sentences-list" style="color: #e2e8f0; padding-left: 1.25rem; line-height: 1.8;">
+                ${wordData.sentences.map(sent => `<li style="margin-bottom: 0.75rem;">${highlightWordInSentence(sent, wordData.word)}</li>`).join('')}
+            </ul>
+        </div>
+    `;
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'word-preview-close';
+    closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+    
+    function closePreview() {
+        if (document.getElementById('word-preview-overlay')) {
+            document.getElementById('word-preview-overlay').remove();
+            previewShown = false;
+        }
+    }
+    
+    closeBtn.addEventListener('click', closePreview);
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closePreview();
+    });
+    
+    overlay.appendChild(previewCard);
+    overlay.appendChild(closeBtn);
+    document.body.appendChild(overlay);
+}
+
 function renderSideWordsList() {
     if (!sideWordsListEl) return;
     sideWordsListEl.innerHTML = '';
@@ -470,19 +544,76 @@ function renderSideWordsList() {
                 <div class="side-word-text">${wordData.word}</div>
                 <div class="side-word-pos">${wordData.pos}</div>
             </div>
+            <button class="side-word-sound" title="Pronounce">
+                <i class="fas fa-volume-up"></i>
+            </button>
         `;
-        item.addEventListener('click', () => {
+        
+        const soundBtnItem = item.querySelector('.side-word-sound');
+        soundBtnItem.addEventListener('click', (e) => {
+            e.stopPropagation();
+            pronounceSpecificWord(wordData.word);
+        });
+        
+        function startLongPress() {
+            longPressWordData = wordData;
+            longPressTimer = setTimeout(() => {
+                showWordPreview(wordData);
+                longPressTimer = null;
+            }, 500);
+        }
+        
+        function cancelLongPress() {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        }
+        
+        item.addEventListener('mousedown', startLongPress);
+        item.addEventListener('mouseup', cancelLongPress);
+        item.addEventListener('mouseleave', cancelLongPress);
+        item.addEventListener('touchstart', startLongPress, { passive: true });
+        item.addEventListener('touchend', cancelLongPress);
+        item.addEventListener('touchcancel', cancelLongPress);
+        item.addEventListener('touchmove', cancelLongPress);
+        
+        let wasLongPress = false;
+        item.addEventListener('click', (e) => {
+            if (longPressTimer === null && longPressWordData === wordData && previewShown) {
+                return;
+            }
+            if (previewShown) return;
             currentIndex = index;
             isFlipped = false;
             updateFlashcard();
             renderSideWordsList();
         });
+        
         sideWordsListEl.appendChild(item);
     });
     
     if (sideWordsListEl.children[currentIndex]) {
         sideWordsListEl.children[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
+}
+
+function getCardColorIndex(word) {
+    let hash = 0;
+    for (let i = 0; i < word.length; i++) {
+        hash = word.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return Math.abs(hash) % 8;
+}
+
+function applyCardColor(word) {
+    for (let i = 0; i < 8; i++) {
+        flashcardFrontEl.classList.remove(`color-${i}`);
+        flashcardBackEl.classList.remove(`color-${i}`);
+    }
+    const colorIdx = getCardColorIndex(word);
+    flashcardFrontEl.classList.add(`color-${colorIdx}`);
+    flashcardBackEl.classList.add(`color-${colorIdx}`);
 }
 
 function updateFlashcard() {
@@ -495,7 +626,7 @@ function updateFlashcard() {
         synonymsEl.innerHTML = '';
         sentencesEl.innerHTML = '';
         currentCardEl.textContent = 0;
-        flashcard.classList.remove('flipped');
+        flashcardEl.classList.remove('flipped');
         isFlipped = false;
         updateButtons();
         return;
@@ -509,14 +640,15 @@ function updateFlashcard() {
     synonymsEl.innerHTML = wordData.synonyms.map(syn => `<span class="synonym-tag">${syn}</span>`).join('');
     sentencesEl.innerHTML = wordData.sentences.map(sent => `<li>${highlightWordInSentence(sent, wordData.word)}</li>`).join('');
     currentCardEl.textContent = currentIndex + 1;
-    flashcard.classList.remove('flipped');
+    flashcardEl.classList.remove('flipped');
     isFlipped = false;
+    applyCardColor(wordData.word.toLowerCase());
     updateButtons();
     renderSideWordsList();
 }
 
 function flipCard() {
-    flashcard.classList.toggle('flipped');
+    flashcardEl.classList.toggle('flipped');
     isFlipped = !isFlipped;
 }
 
@@ -599,17 +731,52 @@ function renderWordsList(words, title) {
         let statusHTML = '';
         if (isKnown) statusHTML = '<span class="word-status known">Known</span>';
         else if (isNotKnown) statusHTML = '<span class="word-status not-known">Not Known</span>';
+        
         card.innerHTML = `
             <div class="word-card-header">
                 <div class="card-serial">${index + 1}</div>
-                <div style="flex: 1">
-                    <h3>${wordData.word}</h3>
+                <div style="flex: 1; min-width: 0;">
+                    <h3 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${wordData.word}</h3>
                     <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">${wordData.pos}</p>
                 </div>
+                <button class="side-word-sound word-list-sound" title="Pronounce" style="margin-right: 0.75rem;">
+                    <i class="fas fa-volume-up"></i>
+                </button>
                 ${statusHTML}
             </div>
         `;
-        card.addEventListener('click', () => {
+        
+        const listSoundBtn = card.querySelector('.word-list-sound');
+        listSoundBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            pronounceSpecificWord(wordData.word);
+        });
+        
+        let localLongPressTimer = null;
+        function startPreviewLongPress() {
+            localLongPressTimer = setTimeout(() => {
+                showWordPreview(wordData);
+                localLongPressTimer = null;
+            }, 500);
+        }
+        function cancelPreviewLongPress() {
+            if (localLongPressTimer) {
+                clearTimeout(localLongPressTimer);
+                localLongPressTimer = null;
+            }
+        }
+        
+        card.addEventListener('mousedown', startPreviewLongPress);
+        card.addEventListener('mouseup', cancelPreviewLongPress);
+        card.addEventListener('mouseleave', cancelPreviewLongPress);
+        card.addEventListener('touchstart', startPreviewLongPress, { passive: true });
+        card.addEventListener('touchend', cancelPreviewLongPress);
+        card.addEventListener('touchcancel', cancelPreviewLongPress);
+        card.addEventListener('touchmove', cancelPreviewLongPress);
+        
+        card.addEventListener('click', (e) => {
+            if (previewShown) return;
+            if (e.target.closest('.word-list-sound')) return;
             currentWords = [wordData];
             currentIndex = 0;
             subcategoryTitle.textContent = wordData.word;
@@ -618,6 +785,7 @@ function renderWordsList(words, title) {
             previousView = currentListView;
             showSection('flashcard');
         });
+        
         wordsListEl.appendChild(card);
     });
 }
@@ -688,13 +856,40 @@ backToPrevBtn.addEventListener('click', () => {
 });
 backToMenuBtn.addEventListener('click', () => showSection('categories'));
 
-flashcard.addEventListener('click', flipCard);
+flashcardEl.addEventListener('click', flipCard);
 nextBtn.addEventListener('click', nextCard);
 prevBtn.addEventListener('click', prevCard);
 shuffleBtn.addEventListener('click', shuffleCards);
 miniKnowBtn.addEventListener('click', (e) => { e.stopPropagation(); handleKnow(); });
 miniNotKnowBtn.addEventListener('click', (e) => { e.stopPropagation(); handleNotKnown(); });
 miniResetBtn.addEventListener('click', (e) => { e.stopPropagation(); handleReset(); });
+
+function handleTouchStart(e) {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+}
+
+function handleTouchEnd(e) {
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+    handleSwipe();
+}
+
+function handleSwipe() {
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+    
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > SWIPE_THRESHOLD) {
+        if (diffX < 0) {
+            nextCard();
+        } else {
+            prevCard();
+        }
+    }
+}
+
+flashcardContainerEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+flashcardContainerEl.addEventListener('touchend', handleTouchEnd, { passive: true });
 
 function searchWords(query) {
     if (!query.trim()) {

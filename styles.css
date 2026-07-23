@@ -609,50 +609,53 @@ body {
     gap: 0.5rem;
     width: auto;
     height: auto;
-    border-radius: 12px;
-    padding: 0.625rem 1.125rem;
+    border-radius: 14px;
+    padding: 0.6875rem 1.25rem;
     cursor: pointer;
     font-size: 0.875rem;
     color: white;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
+    font-weight: 700;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid rgba(255, 255, 255, 0.15);
     font-family: inherit;
+    letter-spacing: 0.2px;
 }
 
 .mini-status-btn:hover {
-    transform: translateY(-2px) scale(1.02);
+    transform: translateY(-3px) scale(1.03);
+    filter: brightness(1.1);
 }
 
 .mini-status-btn:active {
-    transform: translateY(0) scale(0.98);
+    transform: translateY(0) scale(0.96);
+    filter: brightness(0.95);
 }
 
 .mini-know-btn {
-    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+    background: linear-gradient(135deg, #047857 0%, #10b981 50%, #34d399 100%);
+    box-shadow: 0 5px 18px rgba(16, 185, 129, 0.45);
 }
 
 .mini-know-btn:hover {
-    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+    box-shadow: 0 10px 30px rgba(16, 185, 129, 0.6);
 }
 
 .mini-notknow-btn {
-    background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
-    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.35);
+    background: linear-gradient(135deg, #b91c1c 0%, #ef4444 50%, #f87171 100%);
+    box-shadow: 0 5px 18px rgba(239, 68, 68, 0.45);
 }
 
 .mini-notknow-btn:hover {
-    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+    box-shadow: 0 10px 30px rgba(239, 68, 68, 0.6);
 }
 
 .mini-reset-btn {
-    background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
-    box-shadow: 0 4px 15px rgba(6, 182, 212, 0.35);
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%);
+    box-shadow: 0 5px 18px rgba(168, 85, 247, 0.45);
 }
 
 .mini-reset-btn:hover {
-    box-shadow: 0 8px 25px rgba(6, 182, 212, 0.5);
+    box-shadow: 0 10px 30px rgba(168, 85, 247, 0.6);
 }
 
 @media (max-width: 640px) {
@@ -716,6 +719,8 @@ body {
     cursor: pointer;
     transition: all 0.25s ease;
     border: 1px solid transparent;
+    position: relative;
+    user-select: none;
 }
 
 .side-word-item:hover {
@@ -772,6 +777,114 @@ body {
     margin-top: 2px;
 }
 
+.side-word-sound {
+    background: rgba(51, 65, 85, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: var(--text-secondary);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease;
+}
+
+.side-word-sound:hover {
+    background: var(--primary-gradient);
+    color: white;
+    border-color: transparent;
+    transform: scale(1.08);
+}
+
+.side-word-item.active .side-word-sound {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.side-word-item.active .side-word-sound:hover {
+    background: rgba(255, 255, 255, 0.35);
+    transform: scale(1.08);
+}
+
+.word-preview-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.word-preview-card {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    padding: 2rem;
+    border-radius: 20px;
+    max-width: 550px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+    animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes popIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.word-preview-card h3 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--accent-color);
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #a78bfa 0%, #f472b6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.word-preview-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(51, 65, 85, 0.9);
+    border: none;
+    color: white;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    transition: all 0.25s ease;
+}
+
+.word-preview-close:hover {
+    background: rgba(239, 68, 68, 0.9);
+    transform: rotate(90deg);
+}
+
 .flashcard-container {
     perspective: 1200px;
     margin-bottom: 1.5rem;
@@ -812,6 +925,40 @@ body {
 .flashcard-front {
     background: var(--primary-gradient);
     color: white;
+}
+
+/* Card color variations for memorization */
+.flashcard-front.color-0 { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); }
+.flashcard-front.color-1 { background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%); }
+.flashcard-front.color-2 { background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); }
+.flashcard-front.color-3 { background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); }
+.flashcard-front.color-4 { background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%); }
+.flashcard-front.color-5 { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); }
+.flashcard-front.color-6 { background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); }
+.flashcard-front.color-7 { background: linear-gradient(135deg, #ef4444 0%, #f97316 100%); }
+
+.flashcard-back.color-0 { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); }
+.flashcard-back.color-1 { background: linear-gradient(135deg, #0c4a6e 0%, #1e3a8a 100%); }
+.flashcard-back.color-2 { background: linear-gradient(135deg, #022c22 0%, #115e59 100%); }
+.flashcard-back.color-3 { background: linear-gradient(135deg, #78350f 0%, #92400e 100%); }
+.flashcard-back.color-4 { background: linear-gradient(135deg, #4c0519 0%, #831843 100%); }
+.flashcard-back.color-5 { background: linear-gradient(135deg, #083344 0%, #155e75 100%); }
+.flashcard-back.color-6 { background: linear-gradient(135deg, #2e1065 0%, #4c1d95 100%); }
+.flashcard-back.color-7 { background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%); }
+
+.swipe-hint {
+    display: none;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.75rem;
+    opacity: 0.7;
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .swipe-hint {
+        display: block;
+    }
 }
 
 .flashcard-front h3 {
