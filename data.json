@@ -24,6 +24,18 @@
             ]
           },
           {
+"word": "canonize",
+"pos": "verb",
+"phonetic": "/ˈkæn.ə.naɪz/",
+"english": "officially declare a dead person to be a saint; treat or regard someone or something as being of great worth or importance",
+"bangla": "সাধু হিসেবে ঘোষণা করা, চূড়ান্তভাবে স্বীকৃতি দেওয়া, উচ্চ মর্যাদায় অধিষ্ঠিত করা",
+"synonyms": ["sanctify", "beatify", "deify", "glorify", "revere"],
+"sentences": [
+"Mother Teresa was canonized by the Catholic Church in 2016.",
+"The critics were quick to canonize the novelist after her death."
+]
+},
+          {
             "word": "laud",
             "pos": "verb",
             "phonetic": "/lɔːd/",
