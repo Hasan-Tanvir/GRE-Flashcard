@@ -89,26 +89,81 @@ const shuffleBtn = document.getElementById('shuffle-cards');
 const miniKnowBtn = document.getElementById('mini-know-btn');
 const miniNotKnowBtn = document.getElementById('mini-notknow-btn');
 const miniResetBtn = document.getElementById('mini-reset-btn');
+const miniKnowBtnBack = document.getElementById('mini-know-btn-back');
+const miniNotKnowBtnBack = document.getElementById('mini-notknow-btn-back');
+const miniResetBtnBack = document.getElementById('mini-reset-btn-back');
 const soundBtn = document.getElementById('sound-btn');
+const soundBtnBack = document.getElementById('sound-btn-back');
 const backToCategoriesBtn = document.getElementById('back-to-categories');
 const backToPrevBtn = document.getElementById('back-to-prev');
 const backToMenuBtn = document.getElementById('back-to-menu');
 const navBtns = document.querySelectorAll('.nav-btn');
 const searchInput = document.getElementById('search-input');
-const searchBtn = document.getElementById('search-btn');
-const clearBtn = document.getElementById('clear-btn');
+const searchIconPrefix = document.getElementById('search-icon-prefix');
+const searchContainer = searchInput.closest('.search-container');
 const suggestionsContainer = document.getElementById('suggestions-container');
 const filterBtns = document.querySelectorAll('.filter-btn');
-const syncStatusEl = document.getElementById('sync-status');
-const setSyncBtnEl = document.getElementById('setsync-btn');
+const syncStatusMenuEl = document.getElementById('sync-status-menu');
+const setSyncBtnMenuEl = document.getElementById('setsync-btn-menu');
+const kebabContainerEl = document.getElementById('kebab-menu-container');
+const kebabBtnEl = document.getElementById('kebab-menu-btn');
+const kebabDropdownEl = document.getElementById('kebab-dropdown');
 const syncModalEl = document.getElementById('sync-modal');
 const syncKeyInputEl = document.getElementById('sync-key-input');
 const saveSyncBtnEl = document.getElementById('save-sync-btn');
 const cancelSyncBtnEl = document.getElementById('cancel-sync-btn');
-const viewModeBtns = document.querySelectorAll('.view-mode-btn');
+const viewModeBtns = document.querySelectorAll('.view-mode-btn, .kebab-view-item');
 const flashcardLayoutEl = document.getElementById('flashcard-layout');
 const sideWordsListEl = document.getElementById('side-words-list');
 const flashcardContainerEl = document.querySelector('.flashcard-container');
+const clearBtn = document.getElementById('clear-btn');
+
+function updateSearchContainerValue() {
+    if (searchInput.value.trim()) {
+        searchContainer.classList.add('has-value');
+    } else {
+        searchContainer.classList.remove('has-value');
+    }
+}
+
+if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        updateSearchContainerValue();
+        suggestionsContainer.classList.remove('show');
+        searchInput.focus();
+    });
+}
+
+if (searchInput) {
+    searchInput.addEventListener('input', updateSearchContainerValue);
+}
+
+function toggleKebabMenu(forceClose = false) {
+    if (forceClose) {
+        kebabDropdownEl.classList.remove('show');
+        kebabBtnEl.classList.remove('active');
+    } else {
+        const isShown = kebabDropdownEl.classList.toggle('show');
+        kebabBtnEl.classList.toggle('active', isShown);
+    }
+}
+
+if (kebabBtnEl) {
+    kebabBtnEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleKebabMenu();
+    });
+}
+
+document.addEventListener('click', (e) => {
+    if (!kebabContainerEl.contains(e.target)) {
+        toggleKebabMenu(true);
+    }
+    if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+        hideSuggestions();
+    }
+});
 
 function pronounceSpecificWord(word) {
     const utterance = new SpeechSynthesisUtterance(word);
@@ -120,19 +175,26 @@ function pronounceSpecificWord(word) {
 }
 
 function setSyncStatus(status, message) {
-    syncStatusEl.classList.remove('synced', 'error');
-    syncStatusEl.className = 'sync-status';
-    
-    if (status === 'syncing') {
-        syncStatusEl.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> ${message || 'Syncing...'}`;
-    } else if (status === 'synced') {
-        syncStatusEl.classList.add('synced');
-        syncStatusEl.innerHTML = `<i class="fas fa-check-circle"></i> ${message || 'Synced'}`;
-    } else if (status === 'error') {
-        syncStatusEl.classList.add('error');
-        syncStatusEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message || 'Sync Error'}`;
-    } else {
-        syncStatusEl.innerHTML = `<i class="fas fa-cloud"></i> ${message || 'Not Synced'}`;
+    if (syncStatusMenuEl) {
+        syncStatusMenuEl.classList.remove('synced', 'error');
+        const iEl = syncStatusMenuEl.querySelector('i');
+        const spanEl = syncStatusMenuEl.querySelector('span');
+        
+        if (status === 'syncing') {
+            if (iEl) { iEl.className = 'fas fa-circle-notch fa-spin'; }
+            if (spanEl) { spanEl.textContent = message || 'Syncing...'; }
+        } else if (status === 'synced') {
+            syncStatusMenuEl.classList.add('synced');
+            if (iEl) { iEl.className = 'fas fa-check-circle'; }
+            if (spanEl) { spanEl.textContent = message || 'Synced'; }
+        } else if (status === 'error') {
+            syncStatusMenuEl.classList.add('error');
+            if (iEl) { iEl.className = 'fas fa-exclamation-triangle'; }
+            if (spanEl) { spanEl.textContent = message || 'Sync Error'; }
+        } else {
+            if (iEl) { iEl.className = 'fas fa-cloud'; }
+            if (spanEl) { spanEl.textContent = message || 'Not Synced'; }
+        }
     }
 }
 
@@ -285,6 +347,7 @@ function setViewMode(mode) {
     currentViewMode = mode;
     localStorage.setItem('greFlashcardsViewMode', currentViewMode);
     applyViewMode();
+    toggleKebabMenu(true);
 }
 
 viewModeBtns.forEach(btn => {
@@ -294,6 +357,7 @@ viewModeBtns.forEach(btn => {
 function openSyncModal() {
     syncKeyInputEl.value = currentSyncKey || '';
     syncModalEl.style.display = 'flex';
+    toggleKebabMenu(true);
     setTimeout(() => syncKeyInputEl.focus(), 100);
 }
 
@@ -317,15 +381,25 @@ async function saveSyncKey() {
     await loadFromCloud();
 }
 
-setSyncBtnEl.addEventListener('click', openSyncModal);
-cancelSyncBtnEl.addEventListener('click', closeSyncModal);
-saveSyncBtnEl.addEventListener('click', saveSyncKey);
-syncKeyInputEl.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') saveSyncKey();
-});
-syncModalEl.addEventListener('click', (e) => {
-    if (e.target === syncModalEl) closeSyncModal();
-});
+if (setSyncBtnMenuEl) {
+    setSyncBtnMenuEl.addEventListener('click', openSyncModal);
+}
+if (cancelSyncBtnEl) {
+    cancelSyncBtnEl.addEventListener('click', closeSyncModal);
+}
+if (saveSyncBtnEl) {
+    saveSyncBtnEl.addEventListener('click', saveSyncKey);
+}
+if (syncKeyInputEl) {
+    syncKeyInputEl.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') saveSyncKey();
+    });
+}
+if (syncModalEl) {
+    syncModalEl.addEventListener('click', (e) => {
+        if (e.target === syncModalEl) closeSyncModal();
+    });
+}
 
 function pronounceWord() {
     if (currentWords.length === 0) return;
@@ -333,13 +407,15 @@ function pronounceWord() {
     pronounceSpecificWord(wordData.word);
 }
 
-soundBtn.addEventListener('click', pronounceWord);
+if (soundBtn) soundBtn.addEventListener('click', (e) => { e.stopPropagation(); pronounceWord(); });
+if (soundBtnBack) soundBtnBack.addEventListener('click', (e) => { e.stopPropagation(); pronounceWord(); });
 
 async function loadVocabularyData() {
       try {
         const response = await fetch('data.json');
         vocabularyData = await response.json();
         loadFromLocalStorage();
+        updateSearchContainerValue();
         if (currentSyncKey) {
             await loadFromCloud();
         } else {
@@ -544,15 +620,51 @@ function renderSideWordsList() {
                 <div class="side-word-text">${wordData.word}</div>
                 <div class="side-word-pos">${wordData.pos}</div>
             </div>
-            <button class="side-word-sound" title="Pronounce">
-                <i class="fas fa-volume-up"></i>
-            </button>
+            <div class="side-word-actions">
+                <button class="list-icon-btn list-notknow" title="Mark as Not Known" data-action="notknow" data-idx="${index}">
+                    <i class="fas fa-times"></i>
+                </button>
+                <button class="list-icon-btn list-reset" title="Reset Status" data-action="reset" data-idx="${index}">
+                    <i class="fas fa-rotate-left"></i>
+                </button>
+                <button class="list-icon-btn list-know" title="Mark as Known" data-action="know" data-idx="${index}">
+                    <i class="fas fa-check"></i>
+                </button>
+                <button class="side-word-sound" title="Pronounce" data-action="sound" data-idx="${index}">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+            </div>
         `;
         
-        const soundBtnItem = item.querySelector('.side-word-sound');
-        soundBtnItem.addEventListener('click', (e) => {
-            e.stopPropagation();
-            pronounceSpecificWord(wordData.word);
+        item.querySelectorAll('[data-action]').forEach(actionBtn => {
+            actionBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = actionBtn.dataset.action;
+                const idx = parseInt(actionBtn.dataset.idx);
+                const targetWord = currentWords[idx];
+                const targetKey = getWordKey(targetWord);
+                if (action === 'know') {
+                    knownWords.add(targetKey);
+                    notKnownWords.delete(targetKey);
+                    saveToLocalStorage();
+                    if (idx === currentIndex) updateFlashcard();
+                    else renderSideWordsList();
+                } else if (action === 'notknow') {
+                    notKnownWords.add(targetKey);
+                    knownWords.delete(targetKey);
+                    saveToLocalStorage();
+                    if (idx === currentIndex) updateFlashcard();
+                    else renderSideWordsList();
+                } else if (action === 'reset') {
+                    knownWords.delete(targetKey);
+                    notKnownWords.delete(targetKey);
+                    saveToLocalStorage();
+                    if (idx === currentIndex) updateFlashcard();
+                    else renderSideWordsList();
+                } else if (action === 'sound') {
+                    pronounceSpecificWord(targetWord.word);
+                }
+            });
         });
         
         function startLongPress() {
@@ -578,12 +690,12 @@ function renderSideWordsList() {
         item.addEventListener('touchcancel', cancelLongPress);
         item.addEventListener('touchmove', cancelLongPress);
         
-        let wasLongPress = false;
         item.addEventListener('click', (e) => {
             if (longPressTimer === null && longPressWordData === wordData && previewShown) {
                 return;
             }
             if (previewShown) return;
+            if (e.target.closest('[data-action]')) return;
             currentIndex = index;
             isFlipped = false;
             updateFlashcard();
@@ -739,17 +851,48 @@ function renderWordsList(words, title) {
                     <h3 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${wordData.word}</h3>
                     <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">${wordData.pos}</p>
                 </div>
-                <button class="side-word-sound word-list-sound" title="Pronounce" style="margin-right: 0.75rem;">
-                    <i class="fas fa-volume-up"></i>
-                </button>
+                <div class="side-word-actions" style="display: flex; gap: 5px; align-items: center; margin-right: 0.5rem;">
+                    <button class="list-icon-btn list-notknow" title="Mark as Not Known" data-action="notknow">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <button class="list-icon-btn list-reset" title="Reset Status" data-action="reset">
+                        <i class="fas fa-rotate-left"></i>
+                    </button>
+                    <button class="list-icon-btn list-know" title="Mark as Known" data-action="know">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    <button class="side-word-sound word-list-sound" title="Pronounce" data-action="sound">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                </div>
                 ${statusHTML}
             </div>
         `;
         
-        const listSoundBtn = card.querySelector('.word-list-sound');
-        listSoundBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            pronounceSpecificWord(wordData.word);
+        card.querySelectorAll('[data-action]').forEach(actionBtn => {
+            actionBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = actionBtn.dataset.action;
+                const targetKey = getWordKey(wordData);
+                if (action === 'know') {
+                    knownWords.add(targetKey);
+                    notKnownWords.delete(targetKey);
+                    saveToLocalStorage();
+                    renderWordsList(words, title);
+                } else if (action === 'notknow') {
+                    notKnownWords.add(targetKey);
+                    knownWords.delete(targetKey);
+                    saveToLocalStorage();
+                    renderWordsList(words, title);
+                } else if (action === 'reset') {
+                    knownWords.delete(targetKey);
+                    notKnownWords.delete(targetKey);
+                    saveToLocalStorage();
+                    renderWordsList(words, title);
+                } else if (action === 'sound') {
+                    pronounceSpecificWord(wordData.word);
+                }
+            });
         });
         
         let localLongPressTimer = null;
@@ -776,7 +919,7 @@ function renderWordsList(words, title) {
         
         card.addEventListener('click', (e) => {
             if (previewShown) return;
-            if (e.target.closest('.word-list-sound')) return;
+            if (e.target.closest('[data-action]')) return;
             currentWords = [wordData];
             currentIndex = 0;
             subcategoryTitle.textContent = wordData.word;
@@ -860,9 +1003,12 @@ flashcardEl.addEventListener('click', flipCard);
 nextBtn.addEventListener('click', nextCard);
 prevBtn.addEventListener('click', prevCard);
 shuffleBtn.addEventListener('click', shuffleCards);
-miniKnowBtn.addEventListener('click', (e) => { e.stopPropagation(); handleKnow(); });
-miniNotKnowBtn.addEventListener('click', (e) => { e.stopPropagation(); handleNotKnown(); });
-miniResetBtn.addEventListener('click', (e) => { e.stopPropagation(); handleReset(); });
+if (miniKnowBtn) miniKnowBtn.addEventListener('click', (e) => { e.stopPropagation(); handleKnow(); });
+if (miniNotKnowBtn) miniNotKnowBtn.addEventListener('click', (e) => { e.stopPropagation(); handleNotKnown(); });
+if (miniResetBtn) miniResetBtn.addEventListener('click', (e) => { e.stopPropagation(); handleReset(); });
+if (miniKnowBtnBack) miniKnowBtnBack.addEventListener('click', (e) => { e.stopPropagation(); handleKnow(); });
+if (miniNotKnowBtnBack) miniNotKnowBtnBack.addEventListener('click', (e) => { e.stopPropagation(); handleNotKnown(); });
+if (miniResetBtnBack) miniResetBtnBack.addEventListener('click', (e) => { e.stopPropagation(); handleReset(); });
 
 function handleTouchStart(e) {
     touchStartX = e.changedTouches[0].screenX;
@@ -910,6 +1056,7 @@ function handleSearch() {
     const query = searchInput.value;
     const results = searchWords(query);
     hideSuggestions();
+    updateSearchContainerValue();
     navBtns.forEach(btn => btn.classList.remove('active'));
     currentListView = 'search';
     if (query.trim()) {
@@ -922,6 +1069,7 @@ function handleSearch() {
 
 function clearSearch() {
     searchInput.value = '';
+    updateSearchContainerValue();
     hideSuggestions();
     showSection('categories');
     navBtns.forEach(btn => btn.classList.remove('active'));
@@ -950,6 +1098,7 @@ function showSuggestions(query) {
         item.addEventListener('click', () => {
             const word = item.dataset.word;
             searchInput.value = word;
+            updateSearchContainerValue();
             hideSuggestions();
             const wordData = getAllWords().find(w => w.word === word);
             if (wordData) {
@@ -972,31 +1121,24 @@ function hideSuggestions() {
 }
 
 function handleInputChange() {
+    updateSearchContainerValue();
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
         showSuggestions(searchInput.value);
     }, 300);
 }
 
-searchBtn.addEventListener('click', handleSearch);
 searchInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         handleSearch();
     }
 });
 searchInput.addEventListener('input', handleInputChange);
-clearBtn.addEventListener('click', clearSearch);
 
 filterBtns.forEach(btn => {
     btn.addEventListener('click', () => {
         updateFilterButtons(btn.dataset.filter);
     });
-});
-
-document.addEventListener('click', (e) => {
-    if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
-        hideSuggestions();
-    }
 });
 
 document.addEventListener('keydown', (e) => {
